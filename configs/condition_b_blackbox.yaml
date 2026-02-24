@@ -1,0 +1,7 @@
+# 조건 B: 멀티에이전트 블랙박스
+# 4개 에이전트가 동작하지만, 중간 과정은 숨기고 최종 결과만 노출
+experiment_mode: true
+experiment_condition: "multi_blackbox"
+cooperative_planning: false
+autonomous_execution: true
+approval_policy: "never"

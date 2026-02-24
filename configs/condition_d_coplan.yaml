@@ -1,0 +1,7 @@
+# 조건 D: 멀티에이전트 참여형 (Co-Planning)
+# 4개 에이전트 + 전체 과정 노출 + 사용자가 계획에 참여
+experiment_mode: true
+experiment_condition: "multi_coplan"
+cooperative_planning: true
+autonomous_execution: false
+approval_policy: "auto-conservative"

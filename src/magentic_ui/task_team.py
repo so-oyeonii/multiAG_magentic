@@ -206,6 +206,18 @@ async def get_task_team(
             max_turns=10000,
         )
         return team
+
+    # === 실험 조건 A: 단일 에이전트 (WebSurfer + UserProxy만) ===
+    if (
+        magentic_ui_config.experiment_mode
+        and magentic_ui_config.experiment_condition == "single_agent"
+    ):
+        team = RoundRobinGroupChat(
+            participants=[web_surfer, user_proxy],
+            max_turns=10000,
+        )
+        return team
+
     coder_agent: CoderAgent | None = None
     file_surfer: FileSurfer | None = None
     if not magentic_ui_config.run_without_docker:
@@ -255,6 +267,22 @@ async def get_task_team(
         assert file_surfer is not None
         team_participants.extend([coder_agent, file_surfer])
     team_participants.extend(mcp_agents)
+
+    # === 실험 조건별 orchestrator_config 오버라이드 ===
+    if magentic_ui_config.experiment_mode:
+        condition = magentic_ui_config.experiment_condition
+        if condition == "multi_blackbox":
+            # 조건 B: 멀티 에이전트, 과정 숨김 (프론트엔드에서 메시지 필터링)
+            orchestrator_config.cooperative_planning = False
+            orchestrator_config.autonomous_execution = True
+        elif condition == "multi_transparent":
+            # 조건 C: 멀티 에이전트, 과정 전체 노출, Co-Planning 없음
+            orchestrator_config.cooperative_planning = False
+            orchestrator_config.autonomous_execution = True
+        elif condition == "multi_coplan":
+            # 조건 D: 기본 Magentic-UI 동작 (cooperative_planning=True)
+            orchestrator_config.cooperative_planning = True
+            orchestrator_config.autonomous_execution = False
 
     team = GroupChat(
         participants=team_participants,

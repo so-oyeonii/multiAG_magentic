@@ -131,3 +131,15 @@ class MagenticUIConfig(BaseModel):
     run_without_docker: bool = False
     browser_headless: bool = False
     network_name: str = "my-network"
+
+    # === 연구 실험 설정 ===
+    experiment_condition: Literal[
+        "single_agent",       # 조건 A: 단일 에이전트
+        "multi_blackbox",     # 조건 B: 멀티 에이전트, 과정 숨김
+        "multi_transparent",  # 조건 C: 멀티 에이전트, 과정 노출
+        "multi_coplan",       # 조건 D: 멀티 에이전트, Co-Planning
+        "default",            # 기본 모드 (연구 모드 아님)
+    ] = "default"
+    participant_id: Optional[str] = None
+    experiment_task_scenario: Optional[str] = None
+    experiment_mode: bool = False  # True이면 연구 UI 활성화

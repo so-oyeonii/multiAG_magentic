@@ -1,0 +1,7 @@
+# 조건 C: 멀티에이전트 투명
+# 4개 에이전트의 전체 작업 과정을 노출, Co-Planning 없음
+experiment_mode: true
+experiment_condition: "multi_transparent"
+cooperative_planning: false
+autonomous_execution: true
+approval_policy: "never"

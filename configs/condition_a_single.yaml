@@ -1,0 +1,8 @@
+# 조건 A: 단일 에이전트
+# WebSurfer 하나만 사용, 에이전트 간 상호작용 없음
+experiment_mode: true
+experiment_condition: "single_agent"
+cooperative_planning: false
+autonomous_execution: true
+approval_policy: "never"
+websurfer_loop: true
