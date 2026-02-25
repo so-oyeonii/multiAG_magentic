@@ -230,6 +230,27 @@ async def get_team(
                 f"Client config loaded with {len(client_config_dict)} keys", debug
             )
 
+    # === 실험 설정: YAML config에서 실험 필드 및 일반 설정 오버라이드 추출 ===
+    experiment_mode = client_config_dict.get("experiment_mode", False)
+    experiment_condition = client_config_dict.get("experiment_condition", "default")
+    participant_id = client_config_dict.get("participant_id", None)
+    experiment_task_scenario = client_config_dict.get("experiment_task_scenario", None)
+    websurfer_loop = client_config_dict.get("websurfer_loop", False)
+
+    if experiment_mode:
+        # YAML 실험 설정이 CLI 기본값을 오버라이드
+        if "cooperative_planning" in client_config_dict:
+            cooperative_planning = client_config_dict["cooperative_planning"]
+        if "autonomous_execution" in client_config_dict:
+            autonomous_execution = client_config_dict["autonomous_execution"]
+        if "approval_policy" in client_config_dict:
+            action_policy = client_config_dict["approval_policy"]
+        log_debug(
+            f"Experiment mode enabled: condition={experiment_condition}, "
+            f"planning={cooperative_planning}, execution={autonomous_execution}",
+            debug,
+        )
+
     # sets the configurations for each different agent
     model_client_configs = ModelClientConfigs(
         orchestrator=client_config_dict.get("orchestrator_client", None),
@@ -267,6 +288,12 @@ async def get_team(
         run_without_docker=run_without_docker,
         browser_headless=browser_headless,
         browser_local=browser_local,
+        websurfer_loop=websurfer_loop,
+        # === 실험 설정 ===
+        experiment_mode=experiment_mode,
+        experiment_condition=experiment_condition,
+        participant_id=participant_id,
+        experiment_task_scenario=experiment_task_scenario,
     )
     log_debug(
         f"MagenticUIConfig created with planning={cooperative_planning}, execution={autonomous_execution}",

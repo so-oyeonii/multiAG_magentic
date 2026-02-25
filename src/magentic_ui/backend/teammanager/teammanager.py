@@ -284,6 +284,22 @@ class TeamManager:
                 "inside_docker": self.inside_docker,
             }
 
+            # === 실험 설정: config 파일에서 실험 필드 추출 ===
+            experiment_fields = [
+                "experiment_mode", "experiment_condition",
+                "participant_id", "experiment_task_scenario",
+                "websurfer_loop",
+            ]
+            for field in experiment_fields:
+                if field in self.config:
+                    config_params[field] = self.config[field]
+
+            # 실험 모드일 때 YAML의 일반 설정이 프론트엔드 설정을 오버라이드
+            if self.config.get("experiment_mode", False):
+                for field in ["cooperative_planning", "autonomous_execution", "approval_policy"]:
+                    if field in self.config:
+                        config_params[field] = self.config[field]
+
             # Prefer the frontend setting, but fall back to the CLI/environment flag.
             use_fara_agent: bool | None = settings_config.get("use_fara_agent")  # type: ignore[assignment]
             if use_fara_agent is None and isinstance(self.config, dict):
