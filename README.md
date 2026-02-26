@@ -27,6 +27,40 @@ Microsoft latest agentic model [Fara-7B](https://www.microsoft.com/en-us/researc
 - **Easier Installation**: We have uploaded our docker containers to GHCR so you no longer need to build any containers! Installation time now is much quicker.
 
 
+## Experiment Mode
+
+This fork extends Magentic-UI with a configurable **experiment mode** for conducting controlled user studies. It allows researchers to switch between different system configurations via YAML config files without modifying code.
+
+### Features
+
+- **YAML-based condition switching**: Launch different system configurations with `--config configs/condition_*.yaml`
+- **Participant flow**: Built-in consent form, task scenario screen, and post-task survey (Korean)
+- **Interaction logging**: Automatic event logging (task start/end, messages, user actions) to SQLite
+- **Data export**: CLI tool to export collected data as CSV files
+
+### Usage
+
+```bash
+# Launch with a specific condition config
+magentic-ui --port 8081 --config configs/condition_a_single.yaml
+
+# Export experiment data to CSV
+python scripts/export_experiment_data.py --db ./magentic_ui.db
+```
+
+When `experiment_mode` is set to `false` (default), the system behaves identically to the original Magentic-UI.
+
+### Available Configs
+
+| Config File | Description |
+|---|---|
+| `condition_a_single.yaml` | Single-agent mode |
+| `condition_b_blackbox.yaml` | Multi-agent, results only |
+| `condition_c_transparent.yaml` | Multi-agent, full process visibility |
+| `condition_d_coplan.yaml` | Multi-agent, collaborative planning |
+
+---
+
 ## 🚀 Quick Start
 
 Here's how you can get started with Magentic-UI:
