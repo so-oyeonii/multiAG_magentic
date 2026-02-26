@@ -19,6 +19,9 @@ import { RunStatus } from "../types/datamodel";
 import ContentHeader from "../contentheader";
 import PlanList from "../features/Plans/PlanList";
 import McpServersList from "../features/McpServersConfig/McpServersList";
+import ExperimentWelcome from "../../experiment/ExperimentWelcome";
+import ExperimentScenario from "../../experiment/ExperimentScenario";
+import ExperimentSurvey from "../../experiment/ExperimentSurvey";
 
 interface SessionWebSocket {
   socket: WebSocket;
@@ -48,11 +51,20 @@ export const SessionManager: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeSubMenuItem, setActiveSubMenuItem] = useState("");
 
+  // Experiment flow state: "welcome" → "scenario" → "chat" → "survey" → "done"
+  const [experimentPhase, setExperimentPhase] = useState<
+    "welcome" | "scenario" | "chat" | "survey" | "done"
+  >("welcome");
+  const [experimentParticipantId, setExperimentParticipantId] = useState("");
+
   const { user } = useContext(appContext);
   const { session, setSession, sessions, setSessions } = useConfigStore();
+  const experimentConfig = useExperimentStore((state) => state.config);
+  const experimentLoaded = useExperimentStore((state) => state.loaded);
   const fetchExperimentConfig = useExperimentStore(
     (state) => state.fetchConfig
   );
+  const isExperimentMode = experimentConfig.experiment_mode;
 
   // Fetch experiment config on mount
   useEffect(() => {
@@ -462,6 +474,178 @@ export const SessionManager: React.FC = () => {
     }, 2000); // Give time for session selection to complete
   };
 
+  // === Experiment flow: Welcome → Scenario → Chat → Survey ===
+  if (isExperimentMode && experimentLoaded) {
+    if (experimentPhase === "welcome") {
+      return (
+        <div className="relative flex flex-col h-full w-full">
+          {contextHolder}
+          <ContentHeader
+            isMobileMenuOpen={false}
+            onMobileMenuToggle={() => {}}
+            isSidebarOpen={false}
+            onToggleSidebar={() => {}}
+            onNewSession={() => {}}
+          />
+          <div className="flex-1 overflow-y-auto">
+            <ExperimentWelcome
+              onConsent={(pid) => {
+                setExperimentParticipantId(pid);
+                // Log consent event
+                fetch(`${getServerUrl()}/experiment/log`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    event_type: "consent_given",
+                    participant_id: pid,
+                    event_data: { timestamp: new Date().toISOString() },
+                  }),
+                }).catch(() => {});
+                setExperimentPhase("scenario");
+              }}
+            />
+          </div>
+        </div>
+      );
+    }
+
+    if (experimentPhase === "scenario") {
+      return (
+        <div className="relative flex flex-col h-full w-full">
+          {contextHolder}
+          <ContentHeader
+            isMobileMenuOpen={false}
+            onMobileMenuToggle={() => {}}
+            isSidebarOpen={false}
+            onToggleSidebar={() => {}}
+            onNewSession={() => {}}
+          />
+          <div className="flex-1 overflow-y-auto">
+            <ExperimentScenario
+              condition={experimentConfig.experiment_condition}
+              scenario={experimentConfig.experiment_task_scenario}
+              onStart={() => {
+                // Log scenario_read event
+                fetch(`${getServerUrl()}/experiment/log`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    event_type: "scenario_read",
+                    participant_id: experimentParticipantId,
+                    event_data: { condition: experimentConfig.experiment_condition },
+                  }),
+                }).catch(() => {});
+                setExperimentPhase("chat");
+              }}
+            />
+          </div>
+        </div>
+      );
+    }
+
+    if (experimentPhase === "survey") {
+      return (
+        <div className="relative flex flex-col h-full w-full">
+          {contextHolder}
+          <ContentHeader
+            isMobileMenuOpen={false}
+            onMobileMenuToggle={() => {}}
+            isSidebarOpen={false}
+            onToggleSidebar={() => {}}
+            onNewSession={() => {}}
+          />
+          <div className="flex-1 overflow-y-auto">
+            <ExperimentSurvey
+              participantId={experimentParticipantId}
+              condition={experimentConfig.experiment_condition}
+              sessionId={session?.id || null}
+              onComplete={() => setExperimentPhase("done")}
+            />
+          </div>
+        </div>
+      );
+    }
+
+    if (experimentPhase === "done") {
+      return (
+        <div className="relative flex flex-col h-full w-full">
+          {contextHolder}
+          <ContentHeader
+            isMobileMenuOpen={false}
+            onMobileMenuToggle={() => {}}
+            isSidebarOpen={false}
+            onToggleSidebar={() => {}}
+            onNewSession={() => {}}
+          />
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center text-primary">
+              <h1 className="text-2xl font-bold mb-4">실험이 종료되었습니다</h1>
+              <p className="text-secondary">
+                참여해주셔서 감사합니다. 이 창을 닫아주세요.
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // experimentPhase === "chat" — show normal UI but with experiment tweaks
+    // Hide sidebar, show survey button when task is complete
+    return (
+      <div className="relative flex flex-col h-full w-full">
+        {contextHolder}
+
+        <ContentHeader
+          isMobileMenuOpen={isMobileMenuOpen}
+          onMobileMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          isSidebarOpen={false}
+          onToggleSidebar={() => {}}
+          onNewSession={() => {}}
+        />
+
+        <div className="flex flex-1 relative">
+          <div className="flex-1 transition-all -mr-4 duration-200 w-[200px] ml-0">
+            {session && sessions.length > 0 ? (
+              <div className="pl-4">
+                {chatViews}
+                {/* Survey button — visible when a run is complete */}
+                {session?.id &&
+                  sessionRunStatuses[session.id] &&
+                  ["complete", "stopped"].includes(
+                    sessionRunStatuses[session.id]
+                  ) && (
+                    <div className="fixed bottom-24 right-8 z-50">
+                      <button
+                        onClick={() => setExperimentPhase("survey")}
+                        className="px-6 py-3 rounded-full bg-accent text-white font-semibold shadow-lg hover:opacity-90 transition-opacity"
+                      >
+                        설문 시작하기
+                      </button>
+                    </div>
+                  )}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-full text-secondary">
+                <Spin size="large" tip={"Loading..."} />
+              </div>
+            )}
+          </div>
+
+          <SessionEditor
+            session={editingSession}
+            isOpen={isEditorOpen}
+            onSave={handleSaveSession}
+            onCancel={() => {
+              setIsEditorOpen(false);
+              setEditingSession(undefined);
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // === Default (non-experiment) rendering ===
   return (
     <div className="relative flex flex-col h-full w-full">
       {contextHolder}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useExperimentStore } from "../../../hooks/useExperimentStore";
 
 interface SampleTasksProps {
   onSelect: (task: string) => void;
@@ -16,6 +17,7 @@ const SAMPLE_TASKS = [
 const SampleTasks: React.FC<SampleTasksProps> = ({ onSelect }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [windowWidth, setWindowWidth] = useState(0);
+  const experimentConfig = useExperimentStore((state) => state.config);
 
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
@@ -23,6 +25,28 @@ const SampleTasks: React.FC<SampleTasksProps> = ({ onSelect }) => {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  // In experiment mode, show the scenario task instead of sample tasks
+  if (experimentConfig.experiment_mode && experimentConfig.experiment_task_scenario) {
+    return (
+      <div className="mb-6">
+        <div className="mt-4 mb-2 text-sm opacity-70 text-secondary">
+          아래 과업을 입력창에 붙여넣거나 클릭하여 시작하세요
+        </div>
+        <div className="flex flex-col gap-2 w-full">
+          <div className="inline-flex flex-wrap justify-center gap-2 w-full">
+            <button
+              className="max-w-lg rounded px-4 py-3 text-left transition-colors text-primary hover:bg-secondary bg-tertiary border border-accent"
+              onClick={() => onSelect(experimentConfig.experiment_task_scenario!)}
+              type="button"
+            >
+              {experimentConfig.experiment_task_scenario}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const isLargeScreen = windowWidth >= 1024; // lg breakpoint
   const tasksPerRow = windowWidth >= 640 ? 2 : 1; // 2 columns on sm, 1 on mobile
