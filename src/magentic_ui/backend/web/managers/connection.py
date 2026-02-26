@@ -33,6 +33,7 @@ from ...datamodel import (
     TeamResult,
 )
 from ...teammanager import TeamManager
+from ....experiment_logger import ExperimentLogger
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +72,14 @@ class WebSocketManager:
         self._closed_connections: set[int] = set()
         self._input_responses: Dict[int, asyncio.Queue[str]] = {}
         self._team_managers: Dict[int, TeamManager] = {}
+        # Initialize experiment logger (no-op when experiment_mode is False)
+        self._experiment_logger = ExperimentLogger(
+            db_manager=db_manager,
+            experiment_mode=config.get("experiment_mode", False),
+            experiment_condition=config.get("experiment_condition", "default"),
+            participant_id=config.get("participant_id"),
+        )
+
         self._cancel_message = TeamResult(
             task_result=TaskResult(
                 messages=[TextMessage(source="user", content="Run cancelled by user")],
@@ -167,6 +176,14 @@ class WebSocketManager:
                 state = run.state
                 self.db_manager.upsert(run)
                 await self._update_run_status(run_id, RunStatus.ACTIVE)
+
+            # Log experiment task start
+            task_str = task if isinstance(task, str) else str(task)
+            self._experiment_logger.log_task_start(
+                session_id=run.session_id or 0,
+                run_id=run_id,
+                task_content=task_str[:500],  # Truncate for storage
+            )
 
             # add task as message
             if isinstance(task, str):
@@ -268,6 +285,12 @@ class WebSocketManager:
                         f"No final result captured for completed run {run_id}"
                     )
                     await self._update_run_status(run_id, RunStatus.COMPLETE)
+                # Log experiment task completion
+                self._experiment_logger.log_task_end(
+                    session_id=run.session_id or 0,
+                    run_id=run_id,
+                    status="complete",
+                )
             else:
                 await self._send_message(
                     run_id,
@@ -282,11 +305,23 @@ class WebSocketManager:
                 await self._update_run(
                     run_id, RunStatus.STOPPED, team_result=self._cancel_message
                 )
+                # Log experiment task cancellation
+                self._experiment_logger.log_task_end(
+                    session_id=run.session_id or 0,
+                    run_id=run_id,
+                    status="cancelled",
+                )
 
         except Exception as e:
             logger.error(f"Stream error for run {run_id}: {e}")
             traceback.print_exc()
             await self._handle_stream_error(run_id, e)
+            # Log experiment task error
+            self._experiment_logger.log_task_end(
+                session_id=run.session_id or 0 if run else 0,
+                run_id=run_id,
+                status="error",
+            )
         finally:
             self._cancellation_tokens.pop(run_id, None)
             self._team_managers.pop(run_id, None)  # Remove the team manager when done
@@ -430,6 +465,14 @@ class WebSocketManager:
         """Handle input response from client"""
         if run_id in self._input_responses:
             await self._input_responses[run_id].put(response)
+            # Log user input event
+            run = await self._get_run(run_id)
+            self._experiment_logger.log_user_input(
+                session_id=run.session_id or 0 if run else 0,
+                run_id=run_id,
+                input_type="text_input",
+                response=response[:200],  # Truncate for storage
+            )
         else:
             logger.warning(f"Received input response for inactive run {run_id}")
 

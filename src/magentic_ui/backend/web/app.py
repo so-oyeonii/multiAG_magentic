@@ -23,6 +23,7 @@ from .routes import (
     validation,
     ws,
     mcp,
+    experiment,
 )
 
 # Initialize application
@@ -50,6 +51,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         if os.environ.get("FARA_AGENT") is not None:
             config["use_fara_agent"] = os.environ["FARA_AGENT"] == "True"
+
+        # Pass experiment config to the experiment route module
+        from .routes.experiment import set_experiment_config
+        set_experiment_config(config)
 
         # Initialize managers (DB, Connection, Team)
         await init_managers(
@@ -164,6 +169,13 @@ api.include_router(
     mcp.router,
     prefix="/mcp",
     tags=["mcp"],
+)
+
+api.include_router(
+    experiment.router,
+    prefix="/experiment",
+    tags=["experiment"],
+    responses={404: {"description": "Not found"}},
 )
 
 

@@ -231,4 +231,59 @@ class Plan(SQLModel, table=True):
             return value.isoformat()
 
 
-DatabaseModel = Team | Message | Session | Run | Gallery | Settings | Plan
+class ExperimentLog(SQLModel, table=True):
+    """Stores experiment interaction events for research data collection"""
+
+    __table_args__ = {"sqlite_autoincrement": True}
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    created_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), server_default=func.now()),
+    )
+    participant_id: Optional[str] = None
+    session_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(Integer, ForeignKey("session.id", ondelete="CASCADE")),
+    )
+    run_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(Integer, ForeignKey("run.id", ondelete="CASCADE")),
+    )
+    experiment_condition: Optional[str] = None
+    event_type: str = ""  # e.g. "task_start", "task_end", "message_sent", "plan_approved", "survey_response"
+    event_data: Optional[dict[str, Any]] = Field(
+        default=None, sa_column=Column(JSON)
+    )
+
+    @field_serializer("created_at")
+    def serialize_datetime(cls, value: datetime) -> str:
+        if isinstance(value, datetime):
+            return value.isoformat()
+
+
+class ExperimentSurvey(SQLModel, table=True):
+    """Stores post-experiment survey responses"""
+
+    __table_args__ = {"sqlite_autoincrement": True}
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    created_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), server_default=func.now()),
+    )
+    participant_id: Optional[str] = None
+    experiment_condition: Optional[str] = None
+    session_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(Integer, ForeignKey("session.id", ondelete="CASCADE")),
+    )
+    responses: Optional[dict[str, Any]] = Field(
+        default=None, sa_column=Column(JSON)
+    )
+
+    @field_serializer("created_at")
+    def serialize_datetime(cls, value: datetime) -> str:
+        if isinstance(value, datetime):
+            return value.isoformat()
+
+
+DatabaseModel = Team | Message | Session | Run | Gallery | Settings | Plan | ExperimentLog | ExperimentSurvey

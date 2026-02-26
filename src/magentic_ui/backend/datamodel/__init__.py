@@ -8,6 +8,8 @@ from .db import (
     Settings,
     Team,
     DatabaseModel,
+    ExperimentLog,
+    ExperimentSurvey,
 )
 
 from .types import (
@@ -46,4 +48,6 @@ __all__ = [
     "Gallery",
     "Plan",
     "DatabaseModel",
+    "ExperimentLog",
+    "ExperimentSurvey",
 ]
