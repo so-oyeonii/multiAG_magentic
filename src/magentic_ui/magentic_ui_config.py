@@ -39,7 +39,7 @@ class ModelClientConfigs(BaseModel):
     default_client_config: ClassVar[Dict[str, Any]] = {
         "provider": "OpenAIChatCompletionClient",
         "config": {
-            "model": "gpt-4.1-2025-04-14",
+            "model": "gpt-4.1-mini-2025-04-14",
         },
         "max_retries": 10,
     }
