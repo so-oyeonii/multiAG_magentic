@@ -9,6 +9,7 @@ import ApprovalButtons from "./approval_buttons";
 import ChatInput from "./chatinput";
 import { IStatus } from "../../types/app";
 import { RcFile } from "antd/es/upload";
+import { useExperimentStore } from "../../../hooks/useExperimentStore";
 
 const DETAIL_VIEWER_CONTAINER_ID = "detail-viewer-container";
 
@@ -66,6 +67,15 @@ const RunView: React.FC<RunViewProps> = ({
   selectedMcpServers,
   onSelectedMcpServersChange,
 }) => {
+  // Experiment condition
+  const experimentConfig = useExperimentStore((state) => state.config);
+  const isExperimentMode = experimentConfig.experiment_mode;
+  const expCondition = experimentConfig.experiment_condition;
+
+  // In blackbox/single_agent conditions, hide detail viewer and approval UI
+  const hideDetailViewer = isExperimentMode && (expCondition === "multi_blackbox" || expCondition === "single_agent");
+  const hideApprovalButtons = isExperimentMode && expCondition !== "multi_coplan";
+
   const threadContainerRef = useRef<HTMLDivElement | null>(null);
   const [novncPort, setNovncPort] = useState<string | undefined>();
   const [detailViewerExpanded, setDetailViewerExpanded] = useState(false);
@@ -139,9 +149,11 @@ const RunView: React.FC<RunViewProps> = ({
       lastBrowserAddressMsg.config.metadata?.novnc_port !== novncPort
     ) {
       setNovncPort(lastBrowserAddressMsg.config.metadata?.novnc_port);
-      // Show DetailViewer when novncPort becomes available
-      setShowDetailViewer(true);
-      setIsDetailViewerMinimized(false);
+      // Show DetailViewer when novncPort becomes available (unless hidden in experiment)
+      if (!hideDetailViewer) {
+        setShowDetailViewer(true);
+        setIsDetailViewerMinimized(false);
+      }
     }
   }, [run.messages]);
 
@@ -672,18 +684,20 @@ const RunView: React.FC<RunViewProps> = ({
             </div>
           </div>
 
-          {/* Approval Buttons after status */}
-          <div className="flex-shrink-0">
-            <ApprovalButtons
-              status={run.status}
-              inputRequest={run.input_request}
-              isPlanMessage={isPlanMsg}
-              onApprove={onApprove}
-              onDeny={onDeny}
-              onAcceptPlan={onAcceptPlan}
-              onRegeneratePlan={onRegeneratePlan}
-            />
-          </div>
+          {/* Approval Buttons after status — hidden in non-coplan experiment conditions */}
+          {!hideApprovalButtons && (
+            <div className="flex-shrink-0">
+              <ApprovalButtons
+                status={run.status}
+                inputRequest={run.input_request}
+                isPlanMessage={isPlanMsg}
+                onApprove={onApprove}
+                onDeny={onDeny}
+                onAcceptPlan={onAcceptPlan}
+                onRegeneratePlan={onRegeneratePlan}
+              />
+            </div>
+          )}
         </div>
 
         {/* ChatInput - use sticky positioning to keep at bottom with full width */}

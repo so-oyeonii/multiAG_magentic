@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import { message, Spin } from "antd";
 import { useConfigStore } from "../../hooks/store";
+import { useExperimentStore } from "../../hooks/useExperimentStore";
 import { appContext } from "../../hooks/provider";
 import { sessionAPI } from "./api";
 import { SessionEditor } from "./session_editor";
@@ -49,6 +50,14 @@ export const SessionManager: React.FC = () => {
 
   const { user } = useContext(appContext);
   const { session, setSession, sessions, setSessions } = useConfigStore();
+  const fetchExperimentConfig = useExperimentStore(
+    (state) => state.fetchConfig
+  );
+
+  // Fetch experiment config on mount
+  useEffect(() => {
+    fetchExperimentConfig();
+  }, [fetchExperimentConfig]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {

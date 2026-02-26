@@ -23,6 +23,7 @@ import { IPlanStep, convertToIPlanSteps } from "../../types/plan";
 import RenderFile from "../../common/filerenderer";
 import LearnPlanButton from "../../features/Plans/LearnPlanButton";
 import RenderSentinelStep from "./rendersentinelstep";
+import { useExperimentStore } from "../../../hooks/useExperimentStore";
 
 // Types
 interface MessageProps {
@@ -696,8 +697,22 @@ export const RenderMessage: React.FC<MessageProps> = memo(
     allMessages = [],
     skipSentinelHiding = false,
   }) => {
+    // === Experiment condition-based rendering ===
+    const experimentConfig = useExperimentStore((state) => state.config);
+    const isExperimentMode = experimentConfig.experiment_mode;
+    const condition = experimentConfig.experiment_condition;
+
     if (!message) return null;
     if (message.metadata?.type === "browser_address") return null;
+
+    // Condition B (multi_blackbox): Hide all intermediate messages, show only final answer and user messages
+    if (isExperimentMode && condition === "multi_blackbox") {
+      const isUser = messageUtils.isUser(message.source);
+      const isFinal = messageUtils.isFinalAnswer(message.metadata);
+      if (!isUser && !isFinal) {
+        return null;
+      }
+    }
 
     // Hide sentinel check and complete messages - they're shown in RenderSentinelStep
     // Unless we're inside RenderSentinelStep (skipSentinelHiding = true)
@@ -755,22 +770,34 @@ export const RenderMessage: React.FC<MessageProps> = memo(
       }
     }
 
-    const isUser = messageUtils.isUser(message.source);
-    const isUserProxy = message.source === "user_proxy";
-    const isOrchestrator = ["Orchestrator"].includes(message.source);
+    // Condition A (single_agent): Replace all agent sources with "AI Assistant"
+    const effectiveMessage =
+      isExperimentMode && condition === "single_agent" && !messageUtils.isUser(message.source)
+        ? { ...message, source: "AI Assistant" }
+        : message;
+
+    const isUser = messageUtils.isUser(effectiveMessage.source);
+    const isUserProxy = effectiveMessage.source === "user_proxy";
+    const isOrchestrator = ["Orchestrator", "AI Assistant"].includes(effectiveMessage.source);
 
     const parsedContent =
       isUser || isUserProxy
-        ? parseUserContent(message)
-        : { text: message.content, metadata: message.metadata };
+        ? parseUserContent(effectiveMessage)
+        : { text: effectiveMessage.content, metadata: effectiveMessage.metadata };
 
 
     // Use new plan message check
-    const isPlanMsg = messageUtils.isPlanMessage(message.metadata);
+    const isPlanMsg = messageUtils.isPlanMessage(effectiveMessage.metadata);
+
+    // Condition C (multi_transparent): Show plans but disable editing (no co-planning)
+    const effectiveIsEditable =
+      isExperimentMode && (condition === "multi_transparent" || condition === "multi_blackbox" || condition === "single_agent")
+        ? false
+        : isEditable;
 
     const orchestratorContent =
-      isOrchestrator && typeof message.content === "string"
-        ? parseorchestratorContent(message.content, message.metadata)
+      isOrchestrator && typeof effectiveMessage.content === "string"
+        ? parseorchestratorContent(effectiveMessage.content, effectiveMessage.metadata)
         : null;
 
     // Hide regeneration request messages
@@ -816,14 +843,18 @@ export const RenderMessage: React.FC<MessageProps> = memo(
               (isPlanMsg ? (
                 <RenderPlan
                   content={orchestratorContent?.content || {}}
-                  isEditable={isEditable}
+                  isEditable={effectiveIsEditable}
                   onSavePlan={onSavePlan}
                   onRegeneratePlan={onRegeneratePlan}
                   forceCollapsed={forceCollapsed}
                 />
               ) : orchestratorContent?.type === "step-execution" ? (
                 <RenderStepExecution
-                  content={orchestratorContent.content}
+                  content={
+                    isExperimentMode && condition === "single_agent"
+                      ? { ...orchestratorContent.content, agent_name: "AI Assistant" }
+                      : orchestratorContent.content
+                  }
                   hidden={hidden}
                   is_step_repeated={is_step_repeated}
                   is_step_failed={is_step_failed}

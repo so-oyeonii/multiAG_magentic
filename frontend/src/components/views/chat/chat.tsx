@@ -28,6 +28,7 @@ import {
 } from "../../types/plan";
 import SampleTasks from "./sampletasks";
 import ProgressBar from "./progressbar";
+import { useExperimentStore } from "../../../hooks/useExperimentStore";
 
 // Extend RunStatus for sidebar status reporting
 type SidebarRunStatus = BaseRunStatus | "final_answer_awaiting_input";
@@ -89,6 +90,9 @@ export default function ChatView({
   const processedPlanIds = React.useRef(new Set<string>()).current;
 
   const settingsConfig = useSettingsStore((state) => state.config);
+  const experimentConfig = useExperimentStore((state) => state.config);
+  const isExperimentMode = experimentConfig.experiment_mode;
+  const expCondition = experimentConfig.experiment_condition;
   const { user } = React.useContext(appContext);
 
   // Core state
@@ -1162,27 +1166,29 @@ export default function ChatView({
     <div className="text-primary h-[calc(100vh-100px)] bg-primary relative rounded flex-1 scroll w-full">
       {contextHolder}
       <div className="flex flex-col h-full w-full">
-        {/* Progress Bar - Sticky at top */}
-        <div className="progress-container" style={{ height: "3.5rem" }}>
-          <div
-            className="transition-opacity duration-300"
-            style={{
-              opacity:
-                currentRun?.status === "active" ||
-                currentRun?.status === "awaiting_input" ||
-                currentRun?.status === "paused" ||
-                currentRun?.status === "pausing"
-                  ? 1
-                  : 0,
-            }}
-          >
-            <ProgressBar
-              isPlanning={isPlanning}
-              progress={progress}
-              hasFinalAnswer={hasFinalAnswer}
-            />
+        {/* Progress Bar - Sticky at top (hidden in blackbox condition) */}
+        {!(isExperimentMode && expCondition === "multi_blackbox") && (
+          <div className="progress-container" style={{ height: "3.5rem" }}>
+            <div
+              className="transition-opacity duration-300"
+              style={{
+                opacity:
+                  currentRun?.status === "active" ||
+                  currentRun?.status === "awaiting_input" ||
+                  currentRun?.status === "paused" ||
+                  currentRun?.status === "pausing"
+                    ? 1
+                    : 0,
+              }}
+            >
+              <ProgressBar
+                isPlanning={isPlanning}
+                progress={progress}
+                hasFinalAnswer={hasFinalAnswer}
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         <div
           ref={chatContainerRef}

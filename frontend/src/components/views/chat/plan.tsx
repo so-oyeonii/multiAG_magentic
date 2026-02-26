@@ -16,6 +16,7 @@ import {
 } from "@hello-pangea/dnd";
 import { Trash2 } from "lucide-react";
 import { appContext } from "../../../hooks/provider";
+import { useExperimentStore } from "../../../hooks/useExperimentStore";
 import { IPlanStep } from "../../types/plan";
 import AutoResizeTextarea from "../../common/AutoResizeTextarea";
 import {
@@ -111,6 +112,8 @@ const PlanView: React.FC<PlanProps> = ({
     viewOnly && (initialIsCollapsed || forceCollapsed)
   );
   const { user } = useContext(appContext);
+  const experimentConfig = useExperimentStore((state) => state.config);
+  const isSingleAgentMode = experimentConfig.experiment_mode && experimentConfig.experiment_condition === "single_agent";
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   const [focusedDurationIndex, setFocusedDurationIndex] = useState<number | null>(null);
@@ -199,6 +202,9 @@ const PlanView: React.FC<PlanProps> = ({
   };
 
   const getAgentIcon = (agentName: string | undefined): JSX.Element | null => {
+    // Condition A: Show unified "AI Assistant" icon
+    if (isSingleAgentMode) return <AgentIcon tooltip="AI Assistant" />;
+
     const lowerCaseName = (agentName || "").toLowerCase();
     if (lowerCaseName === "coder_agent") return <CoderIcon tooltip="Coder" />;
     if (lowerCaseName === "web_surfer")
@@ -212,6 +218,9 @@ const PlanView: React.FC<PlanProps> = ({
   };
 
   const getAgentName = (agentName: string | undefined): string => {
+    // Condition A: Show unified "AI Assistant" name
+    if (isSingleAgentMode) return "AI Assistant";
+
     const lowerCaseName = (agentName || "").toLowerCase();
     if (lowerCaseName === "coder_agent") return "Coder";
     if (lowerCaseName === "web_surfer") return "WebSurfer";
