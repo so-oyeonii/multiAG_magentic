@@ -22,6 +22,7 @@ import McpServersList from "../features/McpServersConfig/McpServersList";
 import ExperimentWelcome from "../../experiment/ExperimentWelcome";
 import ExperimentScenario from "../../experiment/ExperimentScenario";
 import ExperimentSurvey from "../../experiment/ExperimentSurvey";
+import ApiKeySetup from "./ApiKeySetup";
 
 interface SessionWebSocket {
   socket: WebSocket;
@@ -51,6 +52,10 @@ export const SessionManager: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeSubMenuItem, setActiveSubMenuItem] = useState("");
 
+  // API Key check state
+  const [apiKeyChecked, setApiKeyChecked] = useState(false);
+  const [hasApiKey, setHasApiKey] = useState(false);
+
   // Experiment flow state: "welcome" → "scenario" → "chat" → "survey" → "done"
   const [experimentPhase, setExperimentPhase] = useState<
     "welcome" | "scenario" | "chat" | "survey" | "done"
@@ -65,6 +70,24 @@ export const SessionManager: React.FC = () => {
     (state) => state.fetchConfig
   );
   const isExperimentMode = experimentConfig.experiment_mode;
+
+  // Check API key status on mount
+  useEffect(() => {
+    const checkApiKey = async () => {
+      try {
+        const response = await fetch(`${getServerUrl()}/settings/api-key-status`);
+        const data = await response.json();
+        if (data.status && data.data.has_api_key) {
+          setHasApiKey(true);
+        }
+      } catch {
+        // Server might not be ready yet, will show setup screen
+      } finally {
+        setApiKeyChecked(true);
+      }
+    };
+    checkApiKey();
+  }, []);
 
   // Fetch experiment config on mount
   useEffect(() => {
@@ -474,6 +497,19 @@ export const SessionManager: React.FC = () => {
     }, 2000); // Give time for session selection to complete
   };
 
+  // === API Key gate: show setup screen if no API key ===
+  if (apiKeyChecked && !hasApiKey) {
+    return (
+      <div className="relative flex flex-col h-full w-full">
+        <ApiKeySetup
+          onApiKeySet={() => {
+            setHasApiKey(true);
+          }}
+        />
+      </div>
+    );
+  }
+
   // === Experiment flow: Welcome → Scenario → Chat → Survey ===
   if (isExperimentMode && experimentLoaded) {
     if (experimentPhase === "welcome") {
@@ -486,6 +522,7 @@ export const SessionManager: React.FC = () => {
             isSidebarOpen={false}
             onToggleSidebar={() => {}}
             onNewSession={() => {}}
+            experimentMode={true}
           />
           <div className="flex-1 overflow-y-auto">
             <ExperimentWelcome
@@ -519,6 +556,7 @@ export const SessionManager: React.FC = () => {
             isSidebarOpen={false}
             onToggleSidebar={() => {}}
             onNewSession={() => {}}
+            experimentMode={true}
           />
           <div className="flex-1 overflow-y-auto">
             <ExperimentScenario
@@ -553,6 +591,7 @@ export const SessionManager: React.FC = () => {
             isSidebarOpen={false}
             onToggleSidebar={() => {}}
             onNewSession={() => {}}
+            experimentMode={true}
           />
           <div className="flex-1 overflow-y-auto">
             <ExperimentSurvey
@@ -576,6 +615,7 @@ export const SessionManager: React.FC = () => {
             isSidebarOpen={false}
             onToggleSidebar={() => {}}
             onNewSession={() => {}}
+            experimentMode={true}
           />
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center text-primary">
@@ -601,6 +641,7 @@ export const SessionManager: React.FC = () => {
           isSidebarOpen={false}
           onToggleSidebar={() => {}}
           onNewSession={() => {}}
+          experimentMode={true}
         />
 
         <div className="flex flex-1 relative">

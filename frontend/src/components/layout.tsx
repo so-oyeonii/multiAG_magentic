@@ -33,6 +33,12 @@ const MagenticUILayout = ({
   const { sidebar } = useConfigStore();
   const { isExpanded } = sidebar;
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [hasMounted, setHasMounted] = React.useState(false);
+
+  // Prevent hydration mismatch: only render interactive content after mount
+  React.useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   // Mimic sign-in: if no user or user.email, set default user and localStorage
   React.useEffect(() => {
@@ -80,7 +86,13 @@ const MagenticUILayout = ({
           }}
         >
           <main className="flex-1 p-1 text-primary" style={{ height: "100%" }}>
-            <SessionManager />
+            {hasMounted ? (
+              <SessionManager />
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-primary text-lg">Loading...</div>
+              </div>
+            )}
           </main>
         </ConfigProvider>
         <div className="text-sm text-primary mt-2 mb-2 text-center">

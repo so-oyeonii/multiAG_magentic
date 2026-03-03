@@ -44,7 +44,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         config_file = os.environ.get("_CONFIG")
         if config_file:
             logger.info(f"Loading config from file: {config_file}")
-            with open(config_file, "r") as f:
+            with open(config_file, "r", encoding="utf-8") as f:
                 config = yaml.safe_load(f)
         else:
             logger.info("No config file provided, using defaults.")

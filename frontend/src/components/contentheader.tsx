@@ -15,17 +15,33 @@ type ContentHeaderProps = {
   isSidebarOpen: boolean;
   onToggleSidebar: () => void;
   onNewSession: () => void;
+  experimentMode?: boolean;
 };
 
 const ContentHeader = ({
   isSidebarOpen,
   onToggleSidebar,
   onNewSession,
+  experimentMode = false,
 }: ContentHeaderProps) => {
   const { user } = React.useContext(appContext);
   useConfigStore();
   const [isEmailModalOpen, setIsEmailModalOpen] = React.useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
+
+  // In experiment mode, show simplified header with logo only
+  if (experimentMode) {
+    return (
+      <div className="sticky top-0 bg-primary">
+        <div className="flex h-16 items-center justify-center">
+          <div className="flex items-center space-x-2">
+            <img src={logo} alt="Magentic-UI Logo" className="h-10 w-10" />
+            <div className="text-primary text-2xl font-bold">Magentic-UI</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="sticky top-0 bg-primary">

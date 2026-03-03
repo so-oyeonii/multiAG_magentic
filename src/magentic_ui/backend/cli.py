@@ -34,10 +34,10 @@ warnings.filterwarnings(
 warnings.filterwarnings("ignore", message="Couldn't find ffmpeg or avconv*")
 
 
-def get_env_file_path():
+def get_env_file_path(port: int = 8081):
     """
     Create a temporary environment file path in the user's home directory.
-    Used to pass environment variables to Uvicorn workers.
+    Uses port number to allow multiple instances to run simultaneously.
 
     Returns:
         str: The full path to the temporary environment file
@@ -45,7 +45,7 @@ def get_env_file_path():
     app_dir = os.path.join(os.path.expanduser("~"), ".magentic_ui")
     if not os.path.exists(app_dir):
         os.makedirs(app_dir, exist_ok=True)
-    return os.path.join(app_dir, "temp_env_vars.env")
+    return os.path.join(app_dir, f"temp_env_vars_{port}.env")
 
 
 # This decorator makes this function the default action when no subcommand is provided
@@ -242,7 +242,7 @@ def run_ui(
         env_vars["_CONFIG"] = config
 
     # Create a temporary environment file to share with Uvicorn workers
-    env_file_path = get_env_file_path()
+    env_file_path = get_env_file_path(port)
     with open(env_file_path, "w") as temp_env:
         for key, value in env_vars.items():
             temp_env.write(f"{key}={value}\n")

@@ -4,11 +4,38 @@ import yaml
 from typing import Dict
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 
 from ...datamodel import Settings
 from ..deps import get_db
 
 router = APIRouter()
+
+
+class ApiKeyRequest(BaseModel):
+    api_key: str
+
+
+@router.get("/api-key-status")
+async def get_api_key_status() -> Dict:
+    """Check if OPENAI_API_KEY is set in the environment"""
+    has_key = bool(os.environ.get("OPENAI_API_KEY"))
+    return {
+        "status": True,
+        "data": {"has_api_key": has_key},
+    }
+
+
+@router.post("/api-key")
+async def set_api_key(request: ApiKeyRequest) -> Dict:
+    """Set the OPENAI_API_KEY environment variable for this process"""
+    if not request.api_key or not request.api_key.strip():
+        raise HTTPException(status_code=400, detail="API key cannot be empty")
+    os.environ["OPENAI_API_KEY"] = request.api_key.strip()
+    return {
+        "status": True,
+        "message": "API key set successfully",
+    }
 
 
 def _get_or_create_settings(user_id: str, db) -> Settings:
@@ -59,7 +86,7 @@ async def get_config_info() -> Dict:
 
     if has_config_file and config_file:
         try:
-            with open(config_file, "r") as f:
+            with open(config_file, "r", encoding="utf-8") as f:
                 config_content = yaml.safe_load(f)
         except Exception as e:
             # If we can't read the config file, just log the error but don't fail

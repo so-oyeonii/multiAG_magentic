@@ -444,6 +444,30 @@ export class SettingsAPI {
       throw new Error(data.message || "Failed to update settings");
   }
 
+  async getApiKeyStatus(): Promise<{ has_api_key: boolean }> {
+    const response = await fetch(
+      `${this.getBaseUrl()}/settings/api-key-status`,
+      {
+        headers: this.getHeaders(),
+      }
+    );
+    const data = await response.json();
+    if (!data.status)
+      throw new Error(data.message || "Failed to check API key status");
+    return data.data;
+  }
+
+  async setApiKey(apiKey: string): Promise<void> {
+    const response = await fetch(`${this.getBaseUrl()}/settings/api-key`, {
+      method: "POST",
+      headers: this.getHeaders(),
+      body: JSON.stringify({ api_key: apiKey }),
+    });
+    const data = await response.json();
+    if (!data.status)
+      throw new Error(data.message || "Failed to set API key");
+  }
+
   async getConfigInfo(): Promise<{ has_config_file: boolean; config_file_path: string | null; config_content: any }> {
     const response = await fetch(
       `${this.getBaseUrl()}/settings/config-info`,
